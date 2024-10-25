@@ -1172,6 +1172,7 @@ namespace orc {
         }
         if (!isStripeNeeded) {
           // advance to next stripe when current stripe has no matching rows
+          fprintf(stderr, "Skip stripe in case 1.\n");
           currentStripe += 1;
           currentRowInStripe = 0;
           continue;
@@ -1199,6 +1200,7 @@ namespace orc {
         }
         if (!isStripeNeeded) {
           // advance to next stripe when current stripe has no matching rows
+          fprintf(stderr, "Skip stripe in case 2.\n");
           currentStripe += 1;
           currentRowInStripe = 0;
           continue;
@@ -1236,6 +1238,7 @@ namespace orc {
           if (isStripeFiltered) {
             reader.reset();
             // advance to next stripe when current stripe has no matching rows
+            fprintf(stderr, "Skip stripe in case 3.\n");
             currentStripe += 1;
             currentRowInStripe = 0;
             continue;
@@ -1303,6 +1306,8 @@ namespace orc {
               prepareFollowReaders(footer->rowindexstride(), currentRowInStripe, followRowInStripe),
               sel_rowid_idx.get(), arg);
           followRowInStripe = currentRowInStripe + rowsToRead;
+        } else {
+          fprintf(stderr, "data.numElements == 0. currentRowInStripe: %ld, rowsInCurrentStripe: %ld, rowsToRead: %ld\n", currentRowInStripe, rowsInCurrentStripe, rowsToRead);
         }
       } else {
         nextBatch(data, rowsToRead, startReadPhase, nullptr, arg);
