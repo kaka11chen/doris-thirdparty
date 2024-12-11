@@ -46,6 +46,8 @@ namespace orc {
     WriterMetrics* metrics;
     bool useTightNumericVector;
     uint64_t outputBufferCapacity;
+    // Set the max version number that is readable by Hive 2.0.0 to 2.2.0 before the ORC-125 fix.
+    bool legacyHiveCompatible;
 
     WriterOptionsPrivate() : fileVersion(FileVersion::v_0_12()) {  // default to Hive_0_12
       stripeSize = 64 * 1024 * 1024;                               // 64M
@@ -67,6 +69,7 @@ namespace orc {
       metrics = nullptr;
       useTightNumericVector = false;
       outputBufferCapacity = 1024 * 1024;
+      legacyHiveCompatible = false;
     }
   };
 
@@ -284,6 +287,15 @@ namespace orc {
     return privateBits->outputBufferCapacity;
   }
 
+  WriterOptions& WriterOptions::setLegacyHiveCompatible(bool legacyHiveCompatible) {
+    privateBits->legacyHiveCompatible = legacyHiveCompatible;
+    return *this;
+  }
+
+  bool WriterOptions::getLegacyHiveCompatible() const {
+    return privateBits->legacyHiveCompatible;
+  }
+
   Writer::~Writer() {
     // PASS
   }
@@ -420,6 +432,9 @@ namespace orc {
     fileFooter.set_contentlength(0);
     fileFooter.set_numberofrows(0);
     fileFooter.set_rowindexstride(static_cast<uint32_t>(options.getRowIndexStride()));
+    if (!options.getLegacyHiveCompatible()) {
+      fileFooter.set_writer(writerId);
+    }
     fileFooter.set_writer(writerId);
     fileFooter.set_softwareversion(ORC_VERSION);
 
@@ -434,7 +449,10 @@ namespace orc {
     postScript.add_version(options.getFileVersion().getMajor());
     postScript.add_version(options.getFileVersion().getMinor());
 
-    postScript.set_writerversion(WriterVersion_ORC_135);
+    // Set the max version number(WriterVersion_HIVE_13083) that is readable by Hive 2.0.0 to 2.2.0
+    // before the ORC-125 fix.
+    postScript.set_writerversion(options.getLegacyHiveCompatible() ? WriterVersion_HIVE_13083 :
+                                                                   WriterVersion_ORC_135);
     postScript.set_magic("ORC");
 
     // Initialize first stripe
